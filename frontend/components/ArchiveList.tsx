@@ -1,16 +1,32 @@
 import type { MonthlyArchive } from "~backend/archive/types";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Trash2, RefreshCw } from "lucide-react";
 import { useBackend } from "../hooks/useBackend";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useState } from "react";
 
 interface ArchiveListProps {
   archives: MonthlyArchive[];
+  onArchiveChanged: () => void;
 }
 
-export function ArchiveList({ archives }: ArchiveListProps) {
+export function ArchiveList({ archives, onArchiveChanged }: ArchiveListProps) {
   const backend = useBackend();
   const { toast } = useToast();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [archiveToDelete, setArchiveToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState<number | null>(null);
 
   const downloadMonthReport = async (month: number, year: number) => {
     try {
@@ -30,6 +46,38 @@ export function ArchiveList({ archives }: ArchiveListProps) {
     } catch (error: any) {
       console.error("Download error:", error);
       toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteArchive = async () => {
+    if (!archiveToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await backend.archive.deleteArchive({ id: archiveToDelete });
+      toast({ title: "Archive deleted successfully" });
+      onArchiveChanged();
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setArchiveToDelete(null);
+    }
+  };
+
+  const handleRegenerateArchive = async (archiveId: number) => {
+    setIsRegenerating(archiveId);
+    try {
+      await backend.archive.regenerateArchive({ id: archiveId });
+      toast({ title: "Archive regenerated successfully" });
+      onArchiveChanged();
+    } catch (error: any) {
+      console.error("Regenerate error:", error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsRegenerating(null);
     }
   };
 
@@ -70,14 +118,35 @@ export function ArchiveList({ archives }: ArchiveListProps) {
                   Closed on {new Date(archive.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => downloadMonthReport(archive.month, archive.year)}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleRegenerateArchive(archive.id)}
+                  disabled={isRegenerating === archive.id}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRegenerating === archive.id ? 'animate-spin' : ''}`} />
+                  Regenerate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => downloadMonthReport(archive.month, archive.year)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    setArchiveToDelete(archive.id);
+                    setDeleteDialogOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -103,6 +172,23 @@ export function ArchiveList({ archives }: ArchiveListProps) {
           </div>
         );
       })}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Archive</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this monthly archive? This will also remove any carryover transaction created for the next month. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteArchive} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

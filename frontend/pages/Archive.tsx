@@ -80,7 +80,10 @@ export function Archive() {
           <CardTitle>Monthly Archives</CardTitle>
         </CardHeader>
         <CardContent>
-          <ArchiveList archives={archivesData?.archives ?? []} />
+          <ArchiveList 
+            archives={archivesData?.archives ?? []} 
+            onArchiveChanged={() => queryClient.invalidateQueries({ queryKey: ["archives"] })}
+          />
         </CardContent>
       </Card>
 
