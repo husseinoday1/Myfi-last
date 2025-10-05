@@ -42,7 +42,7 @@ export const exportData = api<ExportRequest, ExportResponse>(
 
       let csv = "Date,Type,Category,Description,Amount\n";
       for (const tx of transactions) {
-        const date = tx.date.toISOString().split("T")[0];
+        const date = new Date(tx.date).toISOString().split("T")[0];
         const type = tx.type;
         const category = tx.category ?? "N/A";
         const description = (tx.description ?? "").replace(/"/g, '""');
