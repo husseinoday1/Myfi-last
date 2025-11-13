@@ -9,6 +9,7 @@ import {
   Archive as ArchiveIcon,
   Settings as SettingsIcon,
 } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -49,7 +50,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
 
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 flex flex-col">
+        <header className="flex justify-end items-center p-4 border-b border-border">
+          <ThemeToggle />
+        </header>
+        <div className="flex-1 p-8">{children}</div>
+      </main>
     </div>
   );
 }
